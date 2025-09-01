@@ -1,11 +1,9 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-const user_validation_1 = require("./user.validation");
 class UserService {
     //*************SignUp**************//
     signUp = (req, res, next) => {
         const { name, email, password, cPassword } = req.body;
-        user_validation_1.signUpSchema["body"].parse(req.body);
         return res.status(201).json({ message: `Success!!`, body: req.body });
     };
     //*************SignIn**************//

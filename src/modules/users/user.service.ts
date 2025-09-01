@@ -9,7 +9,6 @@ class UserService {
 signUp = (req:Request,res:Response,next:NextFunction)=>{
     const {name,email,password,cPassword}:ISignUp = req.body;
 
-    signUpSchema["body"].parse(req.body);
     return res.status(201).json({message:`Success!!`,body:req.body})
 }
 //*************SignIn**************//
