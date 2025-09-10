@@ -1,13 +1,19 @@
 import {Router} from "express"
 import US from "./user.service"
 import { Validation } from "../../middleware/validation";
-import { signUpSchema } from "./user.validation";
+import * as UV from "./user.validation";
+import { Authentication } from "../../middleware/Authentication";
+import { TokenType } from "../../utils/token";
 
 const userRouter = Router();
 
 
-userRouter.post("/signUp",Validation(signUpSchema),US.signUp);
-userRouter.post("/signIn",US.signIn);
+userRouter.post("/signUp",Validation(UV.signUpSchema),US.signUp);
+userRouter.patch("/confirmEmail",Validation(UV.confirmEmailSchema),US.confirmEmail);
+userRouter.post("/signIn",Validation(UV.signInSchema),US.signIn);
+userRouter.get("/profile",Authentication(),US.getProfile);
+userRouter.get("/refreshToken",Authentication(TokenType.refresh),US.refreshToken);
+userRouter.post("/logout",Authentication(),Validation(UV.logoutSchema),US.logout);
 
 
 

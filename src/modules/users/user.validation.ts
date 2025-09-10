@@ -1,13 +1,22 @@
 import * as z from "zod"
 import { GenderType } from "../../DB/model/user.model"
 
+export enum FlagType {
+    all="all",
+    current="current"
+}
 
-
-export const signUpSchema = {
+export const signInSchema = {
     body:z.object({
-        userName:z.string().min(2).max(15).trim(),
         email:z.email(),
         password:z.string().regex(/^(?=.*\d)(?=.*[a-z])(?=.*[A-Z])(?=.*[a-zA-Z]).{8,}$/),
+       
+    }).required()
+}
+
+export const signUpSchema = {
+    body:signInSchema.body.extend({
+        userName:z.string().min(2).max(15).trim(),
         cPassword:z.string(),
         age: z.number().min(18).max(60),
         address: z.string(),
@@ -20,4 +29,21 @@ export const signUpSchema = {
     })
 }
 
+export const confirmEmailSchema = {
+    body:z.strictObject({
+        email:z.email(),
+        otp: z.string().regex(/^\d{6}$/).trim()  
+    }).required()
+}
+
+export const logoutSchema = {
+    body:z.strictObject({
+        flag:z.enum(FlagType)
+    }).required()
+}
+
+
 export type signUpSchemaType = z.infer<typeof signUpSchema.body>
+export type signInSchemaType = z.infer<typeof signInSchema.body>
+export type confirmEmailSchemaType = z.infer<typeof confirmEmailSchema.body>
+export type logoutSchemaType = z.infer<typeof logoutSchema.body>

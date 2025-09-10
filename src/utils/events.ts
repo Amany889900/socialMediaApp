@@ -6,8 +6,7 @@ export const eventEmitter = new EventEmitter();
 
  eventEmitter.on("confirmEmail",async(data)=>{
 
-        const {email} = data
-        const otp = await generateOTP()
-    
+        const {email,otp} = data
+       
         await sendEmail({to:email,subject:"Confirm Email",html:emailTemplate(otp as unknown as string,"Email confirmation")})
  });

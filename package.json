@@ -55,6 +55,7 @@
     "ipaddr.js": "^1.9.1",
     "is-fullwidth-code-point": "^3.0.0",
     "is-promise": "^4.0.0",
+    "jsonwebtoken": "^9.0.2",
     "math-intrinsics": "^1.1.0",
     "media-typer": "^1.1.0",
     "merge-descriptors": "^2.0.0",
@@ -97,6 +98,7 @@
     "type-is": "^2.0.1",
     "undici-types": "^7.10.0",
     "unpipe": "^1.0.0",
+    "uuid": "^8.3.2",
     "vary": "^1.1.2",
     "wrap-ansi": "^7.0.0",
     "wrappy": "^1.0.2",
@@ -114,6 +116,8 @@
   "description": "",
   "devDependencies": {
     "@types/bcrypt": "^6.0.0",
-    "@types/nodemailer": "^7.0.1"
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/nodemailer": "^7.0.1",
+    "@types/uuid": "^10.0.0"
   }
 }
