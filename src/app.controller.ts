@@ -9,6 +9,9 @@ import {rateLimit} from "express-rate-limit"
 import { AppError } from "./utils/errorClass";
 import userRouter from "./modules/users/user.controller";
 import connectionDB from "./DB/connectionDB";
+import userModel, { GenderType } from "./DB/model/user.model";
+import { v4 as uuidv4 } from "uuid";
+
 const port: string | number = process.env.PORT || 5000;
 
 const limiter = rateLimit({
@@ -30,6 +33,19 @@ const bootstrap = async()=>{
     app.use(limiter);
     await connectionDB();
     app.use("/users",userRouter);
+
+    async function test(){
+        const user = new userModel({
+            userName:"ahmed ali",
+            email:`${uuidv4()}ahmed@gmail.com`,
+            password:"1234",
+            age:23,
+            gender:GenderType.male
+        })
+        await user.save()
+    }
+
+    // test();
     app.get("/",(req:Request,res:Response,next:NextFunction)=>{
         return res.status(200).json({message:"Welcome to the social media app"});
     })

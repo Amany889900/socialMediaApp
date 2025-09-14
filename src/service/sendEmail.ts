@@ -22,7 +22,7 @@ const transporter = nodemailer.createTransport({
   });
 
   console.log("Message sent:",info.messageId)
-
+  
  
 }
 
