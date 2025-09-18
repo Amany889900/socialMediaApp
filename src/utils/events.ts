@@ -24,3 +24,17 @@ eventEmitter.on("forgetPassword",async(data)=>{
        
         await sendEmail({to:email,subject:"Confirm Email to reset password",html:emailTemplate(otp as unknown as string,"Email confirmation")})
  });
+
+ eventEmitter.on("twoStepVeri",async(data)=>{
+
+        const {email,otp} = data
+       
+        await sendEmail({to:email,subject:"Confirm Email to enable 2-step verification",html:emailTemplate(otp as unknown as string,"Email confirmation")})
+ });
+
+  eventEmitter.on("loginWithTwoStepVeri",async(data)=>{
+
+        const {email,otp} = data
+       
+        await sendEmail({to:email,subject:"Login with 2-step verification",html:emailTemplate(otp as unknown as string,"Login with 2-step verification")})
+ });

@@ -1,6 +1,6 @@
 // interface ISignUp {name:string,email:string,password:string,cPassword:string} // DTO: Data Transfer Object just in development does not imply any validations
 import { NextFunction, Request, Response } from "express";
-import { confirmEmailSchemaType, FlagType, forgetPasswordSchemaType, loginWithGmailSchemaType, logoutSchemaType, resetPasswordSchemaType, signInSchemaType, signUpSchema, signUpSchemaType, updatePasswordSchemaType } from "./user.validation";
+import { confirmEmailSchemaType, confirmLoginSchemaType, FlagType, forgetPasswordSchemaType, likeSchemaType, loginWithGmailSchemaType, logoutSchemaType, resetPasswordSchemaType, signInSchemaType, signUpSchema, signUpSchemaType, twoStepVeriSchemaType, updatePasswordSchemaType } from "./user.validation";
 import { HydratedDocument, Model } from "mongoose";
 import userModel, { IUser, ProviderType, RoleType } from "../../DB/model/user.model";
 import { DbRepository } from "../../DB/repositories/db.repository";
@@ -16,12 +16,17 @@ import revokeTokenModel from "../../DB/model/revokeToken.model";
 import { v4 as uuidv4 } from "uuid";
 import {OAuth2Client} from 'google-auth-library';
 import { TokenPayload } from "google-auth-library/build/src/auth/loginticket";
+import postModel from "../../DB/model/post.model";
+import { PostRepository } from "../../DB/repositories/post.repository";
+import { createUploadFilePresignedUrl, uploadFile, uploadFiles, uploadLargeFile } from "../../utils/s3.config";
+import { StorageEnum } from "../../middleware/multer.cloud";
 
 
 class UserService {
 
-    // private _userModel:Model<IUser> = userModel
+// private _userModel:Model<IUser> = userModel
     private _userModel = new UserRepository(userModel)
+    private _postModel = new PostRepository(postModel)
     private _revokeTokenModel = new RevokeTokenRepository(revokeTokenModel)
 //*************SignUp**************//
 signUp = async(req:Request,res:Response,next:NextFunction)=>{
@@ -47,6 +52,31 @@ signIn = async(req:Request,res:Response,next:NextFunction)=>{
     if(!await Compare(password,user?.password!)){
         throw new AppError("Invalid password",400);
     }
+    if(user?.twoStep){
+    const otp = await generateOTP();
+    const hashedOtp = await Hash(String(otp));
+    await this._userModel.updateOne({email},{otp:hashedOtp});
+    eventEmitter.emit("loginWithTwoStepVeri",{email,otp});
+    return res.status(200).json({message:`Check your email for OTP to complete login with 2-step verification`});
+    }
+    const jwtid = uuidv4();
+    const access_token = await GenerateToken({payload:{id:user._id,email:user.email},signature:user.role==RoleType.user?process.env.ACCESS_TOKEN_USER!:process.env.ACCESS_TOKEN_ADMIN!,options:{expiresIn:'1h',jwtid}})
+    const refresh_token = await GenerateToken({payload:{id:user._id,email:user.email},signature:user.role==RoleType.user? process.env.REFRESH_TOKEN_USER!:process.env.REFRESH_TOKEN_ADMIN!,options:{expiresIn:'1y',jwtid}})
+
+    return res.status(200).json({message:`Success!!`,access_token,refresh_token})
+}
+
+//*************signInConfirmation**************//
+signInConfirmation = async(req:Request,res:Response,next:NextFunction)=>{
+    const {email,otp} : confirmLoginSchemaType = req.body;
+    const user = await this._userModel.findOne({email});
+    if(!user){
+        throw new AppError("Email is not found",409);
+    }
+    if(!await Compare(otp,user?.otp!)){
+       throw new AppError("Invalid otp",400);
+    }
+    await this._userModel.updateOne({email:user?.email},{$unset:{otp:""}})
     const jwtid = uuidv4();
     const access_token = await GenerateToken({payload:{id:user._id,email:user.email},signature:user.role==RoleType.user?process.env.ACCESS_TOKEN_USER!:process.env.ACCESS_TOKEN_ADMIN!,options:{expiresIn:'1h',jwtid}})
     const refresh_token = await GenerateToken({payload:{id:user._id,email:user.email},signature:user.role==RoleType.user? process.env.REFRESH_TOKEN_USER!:process.env.REFRESH_TOKEN_ADMIN!,options:{expiresIn:'1y',jwtid}})
@@ -243,7 +273,97 @@ updateEmail = async(req:Request,res:Response,next:NextFunction)=>{
     return res.status(200).json({message:`Email successfully updated please confirm new email`});
 }
 
+//*************twoStepVeri**************//
+twoStepVeri = async(req:Request,res:Response,next:NextFunction)=>{ 
 
+    const otp = await generateOTP();
+    const hashedOtp = await Hash(String(otp));
+    await this._userModel.updateOne({email:req.user?.email!},{otp:hashedOtp});
+    eventEmitter.emit("twoStepVeri",{email:req.user?.email!,otp});
+    return res.status(200).json({message:`Check your email for OTP to confirm 2 step verification`});
+}
+
+//*************confirmTwoStepVeri**************//
+confirmTwoStepVeri = async(req:Request,res:Response,next:NextFunction)=>{ 
+
+    const {email,otp} : twoStepVeriSchemaType = req.body;
+    const user = await this._userModel.findOne({email,twoStep:{$exists:false}});
+    if(!user){
+        throw new AppError("Email is not found or 2-step verification already enabled",409);
+    }
+    if(!await Compare(otp,user?.otp!)){
+       throw new AppError("Invalid otp",400);
+    }
+    await this._userModel.updateOne({email:user?.email},{twoStep:true,$unset:{otp:""}})
+    return res.status(200).json({message:`2-step Verification enabled successfully!!`})
+}
+
+//*************like**************//
+like = async(req:Request,res:Response,next:NextFunction)=>{ 
+
+    const {postId} : likeSchemaType = req.body;
+    const post = await this._postModel.findOne({_id:postId});
+    
+    if(!post){
+       throw new AppError("Post not found",404);
+    }
+
+    if (!post.likes.some(id => id.toString() === req.user!._id.toString())) {
+         post.likes.push(req.user!._id);
+         await this._postModel.bulkSave([post]);
+    }
+    
+ 
+    return res.status(200).json({message:`You liked this post!`})
+}
+
+
+//*************unLike**************//
+unLike = async(req:Request,res:Response,next:NextFunction)=>{ 
+
+    const {postId} : likeSchemaType = req.body;
+    const post = await this._postModel.findOne({_id:postId});
+    
+    if(!post){
+       throw new AppError("Post not found",404);
+    }
+
+    post.likes = post.likes.filter(
+    (id) => id.toString() !== req.user?._id!.toString()
+     );
+    await this._postModel.bulkSave([post]);
+ 
+    return res.status(200).json({message:`You unliked this post!`})
+}
+
+uploadImage = async(req:Request,res:Response,next:NextFunction)=>{
+
+    // const key = await uploadFile({
+    //     file:req.file!,
+    //     path:`users/${req.user?._id}`,
+    // })
+    // const key = await uploadLargeFile({
+    //     file:req.file!,
+    //     path:`users/${req.user?._id}`,
+    // })
+
+    //  const key = await uploadFiles({
+    //     files:req.files as Express.Multer.File[],
+    //     path:`users/${req.user?._id}`,
+    // })
+
+    const {originalname,ContentType} =  req.body
+
+    const url = await createUploadFilePresignedUrl({
+        originalname,
+        ContentType,
+        path:`users/${req.user?._id}`
+    })
+
+ 
+
+    return res.status(200).json({message:"success",url});
+}
 
 
 }

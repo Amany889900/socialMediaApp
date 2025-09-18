@@ -1,5 +1,6 @@
 import * as z from "zod"
 import { GenderType } from "../../DB/model/user.model"
+import mongoose from "mongoose"
 
 export enum FlagType {
     all="all",
@@ -41,6 +42,9 @@ export const confirmEmailSchema = {
         otp: z.string().regex(/^\d{6}$/).trim()  
     }).required()
 }
+
+export const twoStepVeriSchema = confirmEmailSchema;
+export const confirmLoginSchema = confirmEmailSchema;
 
 export const logoutSchema = {
     body:z.strictObject({
@@ -97,13 +101,22 @@ export const updateProfileInfoSchema = {
     })
 }
 
+export const likeSchema = {
+    body:z.object({
+        postId:mongoose.Schema.ObjectId
+    })
+}
+
 
 
 export type signUpSchemaType = z.infer<typeof signUpSchema.body>
 export type signInSchemaType = z.infer<typeof signInSchema.body>
 export type loginWithGmailSchemaType = z.infer<typeof loginWithGmailSchema.body>
 export type confirmEmailSchemaType = z.infer<typeof confirmEmailSchema.body>
+export type twoStepVeriSchemaType = z.infer<typeof twoStepVeriSchema.body>
+export type confirmLoginSchemaType = z.infer<typeof confirmLoginSchema.body>
 export type logoutSchemaType = z.infer<typeof logoutSchema.body>
 export type forgetPasswordSchemaType = z.infer<typeof forgetPasswordSchema.body>
 export type resetPasswordSchemaType = z.infer<typeof resetPasswordSchema.body>
 export type updatePasswordSchemaType = z.infer<typeof updatePasswordSchema.body>
+export type likeSchemaType = z.infer<typeof likeSchema.body>

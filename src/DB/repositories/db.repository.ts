@@ -1,4 +1,4 @@
-import { HydratedDocument, Model, ProjectionType, RootFilterQuery, UpdateQuery, UpdateWriteOpResult } from "mongoose";
+import { HydratedDocument, Model, MongooseBulkSaveOptions, MongooseBulkWriteResult, ProjectionType, RootFilterQuery, UpdateQuery, UpdateWriteOpResult } from "mongoose";
 import { AppError } from "../../utils/errorClass";
 
 
@@ -16,7 +16,9 @@ export abstract class DbRepository<TDocument>{
 
     async updateOne(filter: RootFilterQuery<TDocument>,update:UpdateQuery<TDocument>): Promise<UpdateWriteOpResult> {
         return await this.model.updateOne(filter,update)
-    }
+    }   
 
-   
+    async bulkSave(documents: Array<HydratedDocument<TDocument>>, options?: MongooseBulkSaveOptions): Promise<MongooseBulkWriteResult>{
+        return await this.model.bulkSave(documents,options);
+    }
 }
