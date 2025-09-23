@@ -30,6 +30,8 @@ userRouter.patch("/updatePassword",Authentication(),Validation(UV.updatePassword
 userRouter.patch("/updateProfileInfo",Authentication(),Validation(UV.updateProfileInfoSchema),US.updateProfileInfo);
 userRouter.patch("/updateEmail",Authentication(),Validation(UV.updateEmailSchema),US.updateEmail);
 userRouter.patch("/twoStepVeri",Authentication(),US.twoStepVeri);
+userRouter.delete("/freeze{/:userId}",Authentication(),Validation(UV.freezeSchema),US.freezeAccount);
+userRouter.patch("/unfreeze/:userId",Authentication(),Validation(UV.unfreezeSchema),US.unfreezeAccount);
 
 
 

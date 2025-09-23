@@ -11,6 +11,11 @@ import userRouter from "./modules/users/user.controller";
 import connectionDB from "./DB/connectionDB";
 import userModel, { GenderType } from "./DB/model/user.model";
 import { v4 as uuidv4 } from "uuid";
+import { createGetFilePreSignedUrl, deleteFile, getFile } from "./utils/s3.config";
+import {pipeline} from "node:stream";
+import {promisify} from "node:util";
+
+const writePipeLine = promisify(pipeline);
 
 const port: string | number = process.env.PORT || 5000;
 
@@ -46,6 +51,56 @@ const bootstrap = async()=>{
     }
 
     // test();
+
+    ///////////////////////////////AWS Test///////////////////////////////////
+
+
+    app.get("/upload/delete/*path",async(req:Request,res:Response,next:NextFunction)=>{
+        const {path} = req.params as unknown as {path:string[]};
+        const Key = path.join("/");
+
+        const result = await deleteFile({
+            Key,
+        })
+
+        return res.status(200).json({message:"success",result});
+    })
+    app.get("/upload/pre-signed/*path",async(req:Request,res:Response,next:NextFunction)=>{
+        const {path} = req.params as unknown as {path:string[]};
+        const {downloadName} = req.query as {downloadName:string};
+        const Key = path.join("/");
+
+        const url = await createGetFilePreSignedUrl({
+            Key,
+            downloadName:downloadName?downloadName:undefined
+        })
+
+
+        return res.status(200).json({message:"success",url});
+    })
+    app.get("/upload/*path",async(req:Request,res:Response,next:NextFunction)=>{
+        const {path} = req.params as unknown as {path:string[]};
+        const {downloadName} = req.query as {downloadName:string};
+        const Key = path.join("/");
+
+        const result = await getFile({
+            Key
+        })
+
+        const stream = result.Body as NodeJS.ReadableStream;
+        res.setHeader("Content-Type",result?.ContentType!)
+        if(downloadName){
+        
+            res.setHeader("Content-Disposition",`attachment; filename="${downloadName}"`);
+
+        }
+        await writePipeLine(stream,res);
+
+        // return res.status(200).json({message:"success",result});
+    })
+
+    
+
     app.get("/",(req:Request,res:Response,next:NextFunction)=>{
         return res.status(200).json({message:"Welcome to the social media app"});
     })

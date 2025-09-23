@@ -25,15 +25,20 @@ export interface IUser {
     age:number,
     phone?:string,
     address?:string,
+    profileImage?:string,
+    tempProfileImage?:string,
     image?:string,
     confirmed:boolean,
     otp?:string,
     twoStep?:boolean,
     provider:ProviderType,
     changeCredentials?:Date,
+    deletedBy?:Types.ObjectId,
+    restoredBy?:Types.ObjectId,
     gender:GenderType,
     role?:RoleType,
-    deletedAt?:Date
+    deletedAt?:Date,
+    restoredAt?:Date
     // createdAt:Date,
     // updatedAt:Date
 }
@@ -50,6 +55,8 @@ const userSchema = new mongoose.Schema<IUser>({
     }},
     phone:{type:String},
     address:{type:String},
+    profileImage:{type:String},
+    tempProfileImage:{type:String},
     image:{type:String},
     confirmed:{type:Boolean},
     twoStep:{type:Boolean},
@@ -60,7 +67,10 @@ const userSchema = new mongoose.Schema<IUser>({
         return this.provider === ProviderType.google ? false:true;
     }},
     role:{type:String,enum:RoleType,default:RoleType.user},
-    deletedAt:{type:Date}
+    deletedAt:{type:Date},
+    restoredAt:{type:Date},
+    restoredBy:{type:mongoose.Schema.Types.ObjectId,ref:"User"},
+    deletedBy:{type:mongoose.Schema.Types.ObjectId,ref:"User"},
 },{
     timestamps:true,
     toObject:{virtuals:true},

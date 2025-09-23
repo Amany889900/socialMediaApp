@@ -1,6 +1,6 @@
 import * as z from "zod"
 import { GenderType } from "../../DB/model/user.model"
-import mongoose from "mongoose"
+import mongoose, { Types } from "mongoose"
 
 export enum FlagType {
     all="all",
@@ -107,6 +107,30 @@ export const likeSchema = {
     })
 }
 
+export const freezeSchema = {
+    params:z.strictObject({
+        userId:z.string().optional()
+    }).refine((value)=>{
+         return value?.userId? Types.ObjectId.isValid(value.userId) : true
+    },{
+       message:"userId must be of type ObjectId" ,
+       path:["userId"]
+    })
+}
+
+export const unfreezeSchema = {
+  params: z.strictObject({
+    userId: z
+      .string()
+      .refine((id) => Types.ObjectId.isValid(id), {
+        message: "userId must be a valid ObjectId"
+      })
+  }).required()
+};
+
+
+
+
 
 
 export type signUpSchemaType = z.infer<typeof signUpSchema.body>
@@ -120,3 +144,5 @@ export type forgetPasswordSchemaType = z.infer<typeof forgetPasswordSchema.body>
 export type resetPasswordSchemaType = z.infer<typeof resetPasswordSchema.body>
 export type updatePasswordSchemaType = z.infer<typeof updatePasswordSchema.body>
 export type likeSchemaType = z.infer<typeof likeSchema.body>
+export type freezeSchemaType = z.infer<typeof freezeSchema.params>
+export type unfreezeSchemaType = z.infer<typeof unfreezeSchema.params>

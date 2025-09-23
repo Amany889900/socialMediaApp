@@ -1,6 +1,6 @@
 // interface ISignUp {name:string,email:string,password:string,cPassword:string} // DTO: Data Transfer Object just in development does not imply any validations
 import { NextFunction, Request, Response } from "express";
-import { confirmEmailSchemaType, confirmLoginSchemaType, FlagType, forgetPasswordSchemaType, likeSchemaType, loginWithGmailSchemaType, logoutSchemaType, resetPasswordSchemaType, signInSchemaType, signUpSchema, signUpSchemaType, twoStepVeriSchemaType, updatePasswordSchemaType } from "./user.validation";
+import { confirmEmailSchemaType, confirmLoginSchemaType, FlagType, forgetPasswordSchemaType, freezeSchemaType, likeSchemaType, loginWithGmailSchemaType, logoutSchemaType, resetPasswordSchemaType, signInSchemaType, signUpSchema, signUpSchemaType, twoStepVeriSchemaType, unfreezeSchemaType, updatePasswordSchemaType } from "./user.validation";
 import { HydratedDocument, Model } from "mongoose";
 import userModel, { IUser, ProviderType, RoleType } from "../../DB/model/user.model";
 import { DbRepository } from "../../DB/repositories/db.repository";
@@ -354,17 +354,62 @@ uploadImage = async(req:Request,res:Response,next:NextFunction)=>{
 
     const {originalname,ContentType} =  req.body
 
-    const url = await createUploadFilePresignedUrl({
+    const {url,Key} = await createUploadFilePresignedUrl({
         originalname,
         ContentType,
         path:`users/${req.user?._id}`
     })
 
+    const user = await this._userModel.findOneAndUpdate({
+        _id:req.user?._id
+    },{
+        profileImage: Key,
+        tempProfileImage:req.user?.profileImage
+    })
+
+    if(!user){
+        throw new AppError("user not found",404);
+    }
+
+    eventEmitter.emit("UploadProfileImage",{userId:req.user?._id,oldKey:req.user?.profileImage,Key,expiresIn:60})
+
  
 
-    return res.status(200).json({message:"success",url});
+    return res.status(200).json({message:"success",url,user});
 }
 
+
+//*************freezeAccount**************//
+freezeAccount = async(req:Request,res:Response,next:NextFunction)=>{
+    const {userId}:freezeSchemaType = req.params as freezeSchemaType;
+     if(userId && req.user?.role !== RoleType.admin ) {
+        throw new AppError("unauthorized",401)
+     }   
+     const user = await this._userModel.findOneAndUpdate({_id:userId || req.user?._id,deletedAt:{$exists:false}},{deletedAt:new Date(),deletedBy:req.user?._id,changeCredentials:new Date()});
+
+     if(!user){
+        throw new AppError("user not found",404)
+     }
+
+    return res.status(200).json({message:`freezed`})
+}
+
+
+//*************unfreezeAccount**************//
+unfreezeAccount = async(req:Request,res:Response,next:NextFunction)=>{
+    const {userId}:unfreezeSchemaType = req.params as unfreezeSchemaType;
+
+     if(req.user?.role !== RoleType.admin ) {
+        throw new AppError("unauthorized",401)
+     }   
+     const user = await this._userModel.findOneAndUpdate({_id:userId,deletedAt:{$exists:true},deletedBy:{$ne:userId}},{$unset:{deletedAt:"",deletedBy:""},restoredAt:new Date(),restoredBy:req.user?._id});
+
+     if(!user){
+        throw new AppError("user is not found or cannot unfreeze himself or account is already unfreezed",404)
+     }
+
+    return res.status(200).json({message:`unfreezed`})
+}
 
 }
 
