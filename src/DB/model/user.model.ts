@@ -7,7 +7,8 @@ export enum GenderType  {
 
 export enum RoleType  {
     user = "user",
-    admin = "admin"
+    admin = "admin",
+    superAdmin = "superAdmin"
 }
 
 export enum ProviderType{
@@ -37,6 +38,7 @@ export interface IUser {
     restoredBy?:Types.ObjectId,
     gender:GenderType,
     role?:RoleType,
+    friends?:Types.ObjectId[],
     deletedAt?:Date,
     restoredAt?:Date
     // createdAt:Date,
@@ -69,6 +71,7 @@ const userSchema = new mongoose.Schema<IUser>({
     role:{type:String,enum:RoleType,default:RoleType.user},
     deletedAt:{type:Date},
     restoredAt:{type:Date},
+    friends:[{type:mongoose.Schema.Types.ObjectId}],
     restoredBy:{type:mongoose.Schema.Types.ObjectId,ref:"User"},
     deletedBy:{type:mongoose.Schema.Types.ObjectId,ref:"User"},
 },{

@@ -5,6 +5,8 @@ import * as UV from "./user.validation";
 import { Authentication } from "../../middleware/Authentication";
 import { TokenType } from "../../utils/token";
 import { fileValidation, multerCloud } from "../../middleware/multer.cloud";
+import { Authorization } from "../../middleware/Authorization";
+import { RoleType } from "../../DB/model/user.model";
 
 const userRouter = Router();
 
@@ -32,10 +34,11 @@ userRouter.patch("/updateEmail",Authentication(),Validation(UV.updateEmailSchema
 userRouter.patch("/twoStepVeri",Authentication(),US.twoStepVeri);
 userRouter.delete("/freeze{/:userId}",Authentication(),Validation(UV.freezeSchema),US.freezeAccount);
 userRouter.patch("/unfreeze/:userId",Authentication(),Validation(UV.unfreezeSchema),US.unfreezeAccount);
+userRouter.get("/dashboard",Authentication(),Authorization([RoleType.admin,RoleType.superAdmin]),US.dashBoard);
 
-
-
-
+userRouter.patch("/changeRole/:userId",Authentication(),Authorization([RoleType.admin,RoleType.superAdmin]),US.changeRole)
+userRouter.post("/sendFriendRequest/:userId",Authentication(),US.sendFriendRequest)
+userRouter.post("/acceptFriendRequest/:requestId",Authentication(),US.acceptFriendRequest)
 
 
 export default userRouter

@@ -203,7 +203,7 @@ export const deleteFiles = async({
 }:{
   Bucket?:string,
   urls:string[],
-  Quiet:boolean
+  Quiet?:boolean
  
 })=>{
    const command = new DeleteObjectsCommand({

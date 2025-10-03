@@ -14,6 +14,8 @@ import { v4 as uuidv4 } from "uuid";
 import { createGetFilePreSignedUrl, deleteFile, getFile } from "./utils/s3.config";
 import {pipeline} from "node:stream";
 import {promisify} from "node:util";
+import postRouter from "./modules/posts/post.controller";
+import {Server} from "socket.io"
 
 const writePipeLine = promisify(pipeline);
 
@@ -38,6 +40,7 @@ const bootstrap = async()=>{
     app.use(limiter);
     await connectionDB();
     app.use("/users",userRouter);
+    app.use("/posts",postRouter);
 
     async function test(){
         const user = new userModel({
@@ -112,9 +115,37 @@ const bootstrap = async()=>{
     app.use((err:AppError,req:Request,res:Response,next:NextFunction)=>{
         return res.status(err.statusCode as unknown as number || 500).json({message:err.message,stack:err.stack});
     })
-    app.listen(port,()=>{
+    const server = app.listen(port,()=>{
         console.log(`server is running on port ${port}`)
     })
+
+    const io = new Server(server,{
+        cors:{
+            origin:"*"
+        }
+    });
+
+    io.on("connection",(socket)=>{
+    //    console.log(socket)
+    socket.on("sayHi",(data,callback)=>{
+      console.log(data);
+      callback("hello from server")
+    
+    })
+       console.log("user connected");
+
+    socket.on("disconnect",()=>{
+      console.log("user disconnected");
+    })
+    })
+
+    // io.on("connection",(socket)=>{
+    // //    console.log(socket)
+    
+       
+    // })
+
+   
 
 }
 

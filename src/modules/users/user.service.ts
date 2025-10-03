@@ -1,7 +1,7 @@
 // interface ISignUp {name:string,email:string,password:string,cPassword:string} // DTO: Data Transfer Object just in development does not imply any validations
 import { NextFunction, Request, Response } from "express";
 import { confirmEmailSchemaType, confirmLoginSchemaType, FlagType, forgetPasswordSchemaType, freezeSchemaType, likeSchemaType, loginWithGmailSchemaType, logoutSchemaType, resetPasswordSchemaType, signInSchemaType, signUpSchema, signUpSchemaType, twoStepVeriSchemaType, unfreezeSchemaType, updatePasswordSchemaType } from "./user.validation";
-import { HydratedDocument, Model } from "mongoose";
+import { HydratedDocument, Model, Types } from "mongoose";
 import userModel, { IUser, ProviderType, RoleType } from "../../DB/model/user.model";
 import { DbRepository } from "../../DB/repositories/db.repository";
 import { AppError } from "../../utils/errorClass";
@@ -20,6 +20,8 @@ import postModel from "../../DB/model/post.model";
 import { PostRepository } from "../../DB/repositories/post.repository";
 import { createUploadFilePresignedUrl, uploadFile, uploadFiles, uploadLargeFile } from "../../utils/s3.config";
 import { StorageEnum } from "../../middleware/multer.cloud";
+import { FriendRequestRepository } from "../../DB/repositories/friendRequest.repository";
+import friendRequestModel from "../../DB/model/friendRequest.model";
 
 
 class UserService {
@@ -28,6 +30,7 @@ class UserService {
     private _userModel = new UserRepository(userModel)
     private _postModel = new PostRepository(postModel)
     private _revokeTokenModel = new RevokeTokenRepository(revokeTokenModel)
+    private _friendRequestModel = new FriendRequestRepository(friendRequestModel)
 //*************SignUp**************//
 signUp = async(req:Request,res:Response,next:NextFunction)=>{
     const {userName,email,password,cPassword,age,address,phone,gender}:signUpSchemaType = req.body;
@@ -298,43 +301,43 @@ confirmTwoStepVeri = async(req:Request,res:Response,next:NextFunction)=>{
     return res.status(200).json({message:`2-step Verification enabled successfully!!`})
 }
 
-//*************like**************//
-like = async(req:Request,res:Response,next:NextFunction)=>{ 
+// //*************like**************//
+// like = async(req:Request,res:Response,next:NextFunction)=>{ 
 
-    const {postId} : likeSchemaType = req.body;
-    const post = await this._postModel.findOne({_id:postId});
+//     const {postId} : likeSchemaType = req.body;
+//     const post = await this._postModel.findOne({_id:postId});
     
-    if(!post){
-       throw new AppError("Post not found",404);
-    }
+//     if(!post){
+//        throw new AppError("Post not found",404);
+//     }
 
-    if (!post.likes.some(id => id.toString() === req.user!._id.toString())) {
-         post.likes.push(req.user!._id);
-         await this._postModel.bulkSave([post]);
-    }
+//     if (!post.likes.some(id => id.toString() === req.user!._id.toString())) {
+//          post.likes.push(req.user!._id);
+//          await this._postModel.bulkSave([post]);
+//     }
     
  
-    return res.status(200).json({message:`You liked this post!`})
-}
+//     return res.status(200).json({message:`You liked this post!`})
+// }
 
 
-//*************unLike**************//
-unLike = async(req:Request,res:Response,next:NextFunction)=>{ 
+// //*************unLike**************//
+// unLike = async(req:Request,res:Response,next:NextFunction)=>{ 
 
-    const {postId} : likeSchemaType = req.body;
-    const post = await this._postModel.findOne({_id:postId});
+//     const {postId} : likeSchemaType = req.body;
+//     const post = await this._postModel.findOne({_id:postId});
     
-    if(!post){
-       throw new AppError("Post not found",404);
-    }
+//     if(!post){
+//        throw new AppError("Post not found",404);
+//     }
 
-    post.likes = post.likes.filter(
-    (id) => id.toString() !== req.user?._id!.toString()
-     );
-    await this._postModel.bulkSave([post]);
+//     post.likes = post.likes.filter(
+//     (id) => id.toString() !== req.user?._id!.toString()
+//      );
+//     await this._postModel.bulkSave([post]);
  
-    return res.status(200).json({message:`You unliked this post!`})
-}
+//     return res.status(200).json({message:`You unliked this post!`})
+// }
 
 uploadImage = async(req:Request,res:Response,next:NextFunction)=>{
 
@@ -410,6 +413,90 @@ unfreezeAccount = async(req:Request,res:Response,next:NextFunction)=>{
 
     return res.status(200).json({message:`unfreezed`})
 }
+
+dashBoard = async(req:Request,res:Response,next:NextFunction)=>{
+   
+    const results = await Promise.allSettled([
+        this._userModel.find({filter:{}}),
+        this._postModel.find({filter:{}})
+    ])
+    return res.status(200).json({message:`success`,results})
+}
+
+changeRole = async(req:Request,res:Response,next:NextFunction)=>{
+   
+   const {userId} = req.params;
+   const {role:newRole} = req.body;
+
+   const denyRoles:RoleType[] = [newRole,RoleType.superAdmin] // msh ha update lw el oldRole nfs el newRole, msh ay 7d ynf3 y update l superAdmin
+
+   if(req.user?.role == RoleType.admin){
+     denyRoles.push(RoleType.admin); //mynf3sh admin y3dl f admin zyo
+     if(newRole == RoleType.superAdmin){
+        denyRoles.push(RoleType.user)
+     }
+   }
+   const user = await this._userModel.findOneAndUpdate({_id:userId,role:{$nin:denyRoles}},{role:newRole},{new:true});
+   if(!user){
+    throw new AppError("user not found or you are not authorized to update this role",404)
+   }
+   return res.status(200).json({message:`success`})
+} 
+
+
+sendFriendRequest = async(req:Request,res:Response,next:NextFunction)=>{
+   
+   const {userId} = req.params as unknown as {userId:Types.ObjectId};
+   const user = await this._userModel.findOne({_id:userId});
+   if(!user){
+    throw new AppError("user not found",404)
+   }
+
+   if(userId == req.user?._id!){
+    throw new AppError("cannot send request to the same account",409)
+
+   }
+   
+   // lw ay 7d feehom ba3et request ll tany
+   const checkRequest = await this._friendRequestModel.findOne({
+     sentFrom: {$in:[req.user?._id,userId]},
+     sentTo: {$in:[req.user?._id,userId]}
+   })
+
+   if(checkRequest){
+    throw new AppError("request already sent",400)
+   }
+
+   const request = await this._friendRequestModel.create({
+    sentFrom: req.user?._id as unknown as Types.ObjectId,
+    sentTo:userId as unknown as Types.ObjectId,
+   })
+   return res.status(201).json({message:`success`,request})
+} 
+
+acceptFriendRequest = async(req:Request,res:Response,next:NextFunction)=>{
+   
+   const {requestId} = req.params as unknown as {requestId:Types.ObjectId};
+   
+   const checkRequest = await this._friendRequestModel.findOneAndUpdate({
+        _id:requestId,
+        sentTo:req?.user?._id,
+        acceptedAt:{$exists:false}
+   },{
+    acceptedAt: new Date()
+   })
+
+   if(!checkRequest){
+      throw new AppError("request not found or already accepted",404);
+   }
+
+   await Promise.all([
+    this._userModel.updateOne({_id:checkRequest.sentFrom},{$push:{friends:checkRequest.sentTo}}),
+    this._userModel.updateOne({_id:checkRequest.sentTo},{$push:{friends:checkRequest.sentFrom}}),
+   ])
+
+   return res.status(201).json({message:`success`})
+} 
 
 }
 
