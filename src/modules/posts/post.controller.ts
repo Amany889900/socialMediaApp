@@ -23,4 +23,7 @@ Validation(PV.updatePostSchema),PS.updatePost)
 
 postRouter.get("/",PS.getPosts);
 
+postRouter.delete("/freeze/:postId",Authentication(),Validation(PV.freezeSchema),PS.freezePost);
+postRouter.patch("/unfreeze/:postId",Authentication(),Validation(PV.unfreezeSchema),PS.unfreezePost);
+
 export default postRouter

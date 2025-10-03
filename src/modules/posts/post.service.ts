@@ -6,7 +6,7 @@ import { PostRepository } from "../../DB/repositories/post.repository";
 import { AppError } from "../../utils/errorClass";
 import { deleteFiles, uploadFiles } from "../../utils/s3.config";
 import { v4 as uuidv4 } from "uuid";
-import { ActionEnum, likePostDto, likePostQueryDto } from "./post.validation";
+import { ActionEnum, freezeSchemaType, likePostDto, likePostQueryDto, unfreezeSchemaType } from "./post.validation";
 import { UpdateQuery } from "mongoose";
 import { CommentRepository } from "../../DB/repositories/comment.repository";
 import commentModel from "../../DB/model/comment.model";
@@ -131,6 +131,34 @@ class PostService{
          
         
         
+    }
+
+    //*************freezeAccount**************//
+    freezePost = async(req:Request,res:Response,next:NextFunction)=>{
+        const {postId}:freezeSchemaType = req.params as freezeSchemaType;
+            
+         const post = await this._postModel.findOneAndUpdate({_id:postId,deletedAt:{$exists:false}},{deletedAt:new Date(),deletedBy:req.user?._id,changeCredentials:new Date()});
+    
+         if(!post){
+            throw new AppError("post not found or already freezed",404)
+         }
+    
+        return res.status(200).json({message:`freezed`})
+    }
+    
+    
+    //*************unfreezeAccount**************//
+    unfreezePost = async(req:Request,res:Response,next:NextFunction)=>{
+        const {postId}:unfreezeSchemaType = req.params as unfreezeSchemaType;
+    
+           
+         const post = await this._postModel.findOneAndUpdate({_id:postId,deletedAt:{$exists:true}},{$unset:{deletedAt:"",deletedBy:""},restoredAt:new Date(),restoredBy:req.user?._id});
+    
+         if(!post){
+            throw new AppError("post is not found or is already unfreezed",404)
+         }
+    
+        return res.status(200).json({message:`unfreezed`})
     }
 }
 

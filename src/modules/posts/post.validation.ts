@@ -1,6 +1,6 @@
 import * as z from "zod"
 import { AllowCommentEnum, AvailabilityEnum } from "../../DB/model/post.model"
-import mongoose, { Schema } from "mongoose"
+import mongoose, { Schema, Types } from "mongoose"
 import { generalRules } from "../../utils/generalRules"
 
 export enum ActionEnum {
@@ -55,8 +55,38 @@ export const updatePostSchema ={
       }
     })
 
+
    
 }
 
+
+export const freezeSchema = {
+    params: z.strictObject({
+    postId: z
+      .string()
+      .refine((id) => Types.ObjectId.isValid(id), {
+        message: "postId must be a valid ObjectId"
+      })
+  }).required()
+}
+
+export const unfreezeSchema = {
+  params: z.strictObject({
+    postId: z
+      .string()
+      .refine((id) => Types.ObjectId.isValid(id), {
+        message: "postId must be a valid ObjectId"
+      })
+  }).required()
+};
+
+
+
+
+
+
+
+export type freezeSchemaType = z.infer<typeof freezeSchema.params>
+export type unfreezeSchemaType = z.infer<typeof unfreezeSchema.params>
     export type likePostDto = z.infer<typeof likePostSchema.params>
     export type likePostQueryDto = z.infer<typeof likePostSchema.query>
